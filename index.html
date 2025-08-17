@@ -242,7 +242,10 @@ canvas {
         let shuffledRoster = [];
         const jerseyImages = {};
         const rivalJerseyImages = {};
-        
+        // -- basketball --
+        const basketballImg = new Image();
+        basketballImg.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0Y0QTMwMCIgc3Ryb2tlPSIjQjg4NjBCIiBzdHJva2Utd2lkdGg9IjQiLz4KICA8cGF0aCBkPSJNMTAsNTAgUTUwLDcwIDkwLDUwIiBzdHJva2U9IiNCODg2MEIiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIvPgogIDxsaW5lIHgxPSI1MCIgeTE9IjEwIiB4Mj0iNTAiIHkyPSI5MCIgc3Ryb2tlPSIjQjg4NjBCIiBzdHJva2Utd2lkdGg9IjMiLz4KICA8cGF0aCBkPSJNMjAsMjAgUTUwLDUwIDIwLDgwIiBzdHJva2U9IiNCODg2MEIiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIvPgogIDxwYXRoIGQ9Ik04MCwyMCBRNTAsNTAgODAsODAiIHN0cm9rZT0iI0I4ODYwQiIgc3Ryb2tlLXdpZHRoPSIzIiBmaWxsPSJub25lIi8+Cjwvc3ZnPg==';
+      
         // --- Game State ---
         let gameState = STATES.LINEUP;
         let animationFrameId;
@@ -414,10 +417,12 @@ function drawGame() {
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,0.4)';
   ctx.shadowBlur = gridSize * 0.4;
-  ctx.fillText('🏀', 0, 0);
+  if (basketballImg.complete) {
+    ctx.drawImage(basketballImg, -gridSize/2, -gridSize/2, gridSize, gridSize);
+  }
   ctx.restore();
 }
-
+      
 // helper
 function roundRect(x, y, w, h, r, fill, stroke) {
   ctx.beginPath();
