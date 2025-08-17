@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>SNAKING & SHAKING</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,10 +19,7 @@
   width: 100%;
   max-width: 600px;
   aspect-ratio: 1 / 1;
-  border-top: 10px solid #006BB6;
-  border-left: 10px solid #006BB6;
-  border-right: 10px solid #006BB6;
-  border-bottom: 10px solid #006BB6;
+  border: 10px solid #006BB6;
   border-radius: 0;
   overflow: hidden;
   background: none;
@@ -70,14 +67,18 @@ canvas {
         
         /* --- Enhanced Lineup Screen Styles --- */
         #lineupModal {
-            position: absolute;
+            position: fixed;
             inset: 0;
+            width: 100vw;
+            height: 100svh;
             background: #222 !important;
             margin: 0;
-            padding: 0;
+            padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px);
+            box-sizing: border-box;
             font-family: 'Press Start 2P', cursive;
             text-transform: uppercase;
-            overflow: hidden;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .player-card {
             display: flex;
@@ -85,10 +86,16 @@ canvas {
             align-items: center;
             animation: fadeIn 0.5s ease-out forwards;
             opacity: 0;
+            min-width: 80px;
+            max-width: 140px;
+            text-align: center;
         }
         .player-card img {
             border: 4px solid white;
             box-shadow: 0 0 15px #F58426;
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
         }
         #lineupTitle {
             text-shadow: 3px 3px #000000;
@@ -163,7 +170,7 @@ canvas {
             <h2 id="lineupTitle" class="text-2xl md:text-3xl text-knicks-orange mb-4 flex-shrink-0"></h2>
             
             <div class="flex-grow w-full flex items-center justify-center overflow-y-auto py-2">
-                <div id="awayTeam" class="flex flex-wrap justify-center items-start gap-x-4 gap-y-6">
+                <div id="awayTeam" class="flex flex-wrap justify-center items-start gap-x-4 gap-y-6 px-2">
                     <!-- Rival players will be dynamically inserted here -->
                 </div>
             </div>
@@ -578,7 +585,7 @@ function drawDefenders() {
                     playerCard.style.animationDelay = `${index * 0.15 + 0.5}s`; 
                     playerCard.style.transform = 'translateY(20px)';
                     playerCard.innerHTML = 
-                        `<img src="${player.img}" class="w-20 h-20 rounded-full mb-2">
+                        `<img src="${player.img}" class="w-20 h-20 rounded-full mb-2" alt="${player.name}">
                         <p class="text-sm text-white">${player.name}</p>`
                     ;
                     awayTeamEl.appendChild(playerCard);
@@ -590,12 +597,16 @@ function drawDefenders() {
             // Reset animations
             marqueeEl.style.animation = 'none';
             marqueeEl.offsetHeight; // Trigger reflow
-            marqueeEl.style.animation = '';
+            marqueeEl.style.animation = 'marquee-scroll 4s ease-in-out';
 
+            // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
             lineupModal.classList.remove('hidden');
             lineupModal.classList.add('flex');
 
             setTimeout(() => {
+                // Restore background scrolling
+                document.body.style.overflow = '';
                 lineupModal.classList.add('hidden');
                 lineupModal.classList.remove('flex');
                 callback();
