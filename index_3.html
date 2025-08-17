@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SNAKING & SHAKING</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            touch-action: none;
+        }
+#game-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1 / 1;
+  border: 10px solid #006BB6;
+  border-radius: 0;
+  overflow: hidden;
+  background: none;
+}
+#gameCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-color: #dcb18c;
+}
+        .knicks-blue { background-color: #006BB6; }
+        .knicks-orange { background-color: #F58426; }
+        .knicks-silver { background-color: #BEC0C2; }
+        #freeThrowMeter {
+            width: 40px;
+            height: 200px;
+            background-color: #333;
+            border: 2px solid white;
+            position: relative;
+            border-radius: 5px;
+        }
+        #meterIndicator {
+            width: 100%;
+            height: 5px;
+            background-color: #F58426;
+            position: absolute;
+            left: 0;
+        }
+        #makeZone {
+            width: 100%;
+            height: 30px;
+            background-color: rgba(0, 255, 0, 0.5);
+            position: absolute;
+            left: 0;
+            top: 85px;
+        }
+        
+        /* --- Enhanced Lineup Screen Styles --- */
+        #lineupModal {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100svh;
+            background: #222 !important;
+            margin: 0;
+            padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px);
+            box-sizing: border-box;
+            font-family: 'Press Start 2P', cursive;
+            text-transform: uppercase;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .player-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+            min-width: 80px;
+            max-width: 140px;
+            text-align: center;
+        }
+        .player-card img {
+            border: 4px solid white;
+            box-shadow: 0 0 15px #F58426;
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+        }
+        #lineupTitle {
+            text-shadow: 3px 3px #000000;
+            animation: pulse 1.5s infinite;
+        }
+        #marquee {
+            width: 100%;
+            background-color: #F58426;
+            color: #002D62;
+            padding: 10px 0;
+            white-space: nowrap;
+            box-shadow: 0 0 15px black;
+            transform: translateX(100%);
+            animation: marquee-scroll 4s ease-in-out;
+        }
+
+        @keyframes marquee-scroll {
+            0% { transform: translateX(100%); }
+            20% { transform: translateX(0); }
+            80% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-[100svh] p-4 overflow-hidden">
+
+    <div class="w-full max-w-lg mx-auto text-center">
+        <h1 class="text-xl md:text-2xl font-bold text-knicks-orange mb-1" style="font-family: 'Press Start 2P', cursive;">SNAKING & SHAKING</h1>
+        <div class="flex justify-around items-center mb-4 p-2 knicks-blue rounded-lg text-xs sm:text-base">
+            <div>ROUND: <span id="championshipLevel" class="text-knicks-orange">1</span></div>
+            <div>SCORE: <span id="score" class="text-knicks-orange">0</span></div>
+            <div>LOOSE BALLS: <span id="trophiesCollected" class="text-knicks-orange">0/16</span></div>
+        </div>
+        <div id="rival-display" class="text-knicks-silver h-6"></div>
+    </div>
+
+    <div id="game-container" class="relative w-full max-w-lg mx-auto rounded-lg overflow-hidden">
+        <canvas id="gameCanvas" class="shadow-2xl"></canvas>
+        
+        <div id="gameOverModal" class="absolute inset-0 bg-black bg-opacity-70 flex-col items-center justify-center rounded-lg hidden z-10">
+            <h2 class="text-4xl text-red-500 mb-4" style="font-family: 'Press Start 2P', cursive;">GAME OVER</h2>
+            <p class="text-xl mb-6">Final Score: <span id="finalScore">0</span></p>
+            <button id="restartButton" class="px-6 py-3 knicks-orange text-gray-900 font-bold rounded-lg shadow-md hover:bg-yellow-400 transition-colors">
+                PLAY AGAIN
+            </button>
+        </div>
+
+        <div id="freeThrowModal" class="absolute inset-0 bg-black bg-opacity-80 flex-col items-center justify-center rounded-lg hidden z-10">
+            <h2 class="text-2xl text-knicks-orange mb-4">CLUTCH FREE THROWS</h2>
+            <p class="text-sm text-center mb-2 text-knicks-silver">Make both to advance to the Finals!</p>
+            <img id="playerImage" src="" class="w-24 h-24 rounded-full border-4 border-knicks-orange mb-4" alt="Player">
+            <p id="playerName" class="text-xl mb-4"></p>
+            <div id="freeThrowMeter">
+                <div id="makeZone"></div>
+                <div id="meterIndicator"></div>
+            </div>
+            <p class="text-xl mt-4">Made: <span id="shotsMade">0</span> / 2</p>
+            <p class="text-sm mt-2 text-knicks-silver">Tap/Click or Press Space/Enter to Shoot</p>
+        </div>
+
+        <!-- FIX: Simplified lineup modal for better readability -->
+        <div id="lineupModal" class="absolute inset-0 flex flex-col items-center justify-between rounded-lg hidden p-4 z-10">
+            <h2 id="lineupTitle" class="text-2xl md:text-3xl text-knicks-orange mb-4 flex-shrink-0"></h2>
+            
+            <div class="flex-grow w-full flex items-center justify-center overflow-y-auto py-2">
+                <div id="awayTeam" class="flex flex-wrap justify-center items-start gap-x-4 gap-y-6 px-2">
+                    <!-- Rival players will be dynamically inserted here -->
+                </div>
+            </div>
+        
+            <div id="marquee" class="w-full flex-shrink-0 mt-4"><span id="marqueeText"></span></div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('game-container');
+        const scoreEl = document.getElementById('score');
+        const championshipLevelEl = document.getElementById('championshipLevel');
+        const trophiesCollectedEl = document.getElementById('trophiesCollected');
+        const rivalDisplayEl = document.getElementById('rival-display');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const finalScoreEl = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+        const freeThrowModal = document.getElementById('freeThrowModal');
+        const meterIndicator = document.getElementById('meterIndicator');
+        const makeZone = document.getElementById('makeZone');
+        const shotsMadeEl = document.getElementById('shotsMade');
+        const playerImageEl = document.getElementById('playerImage');
+        const playerNameEl = document.getElementById('playerName');
+        const lineupModal = document.getElementById('lineupModal');
+        const lineupTitleEl = document.getElementById('lineupTitle');
+        const awayTeamEl = document.getElementById('awayTeam');
+        const marqueeEl = document.getElementById('marquee');
+        const marqueeTextEl = document.getElementById('marqueeText');
+
+        // --- Config Constants ---
+        const CONFIG = {
+            FRAME_RATE: 10,
+            GRID_SIZE_HINT: 20,
+            COLORS: {
+                KNICKS_BLUE: '#006BB6',
+                KNICKS_ORANGE: '#F58426',
+                COURT: '#dcb18c',
+            },
+            FT_METER: {
+                HEIGHT: 200,
+                INDICATOR_HEIGHT: 5,
+                ZONE_HEIGHT: 30,
+                ZONE_TOP: 85,
+                SPEED: 3, // px per frame at ~60fps
+            },
+        };
+
+        const STATES = {
+            LINEUP: 'lineup',
+            PLAYING: 'playing',
+            FREE_THROW: 'freeThrow',
+            GAME_OVER: 'gameOver',
+        };
+
+        // --- Roster & Rivals (Projected 2025-2026) ---
+        const knicksRoster = [
+            { name: 'Brunson', number: '11', img: 'https://placehold.co/100x100/006BB6/FFFFFF?text=11' },
+            { name: 'Bridges', number: '25', img: 'https://placehold.co/100x100/006BB6/FFFFFF?text=25' },
+            { name: 'Towns', number: '32', img: 'https://placehold.co/100x100/006BB6/FFFFFF?text=32' },
+            { name: 'Anunoby', number: '8', img: 'https://placehold.co/100x100/006BB6/FFFFFF?text=8' },
+            { name: 'Hart', number: '3', img: 'https://placehold.co/100x100/006BB6/FFFFFF?text=3' },
+            { name: 'Robinson', number: '23', img: 'https://placehold.co/100x100/006BB6/FFFFFF?text=23' },
+            { name: 'McBride', number: '2', img: 'https://placehold.co/100x100/006BB6/FFFFFF?text=2' }
+        ];
+        const rivals = [
+            { title: 'REGULAR SEASON', name: 'Regular Season', baseDefenders: 0, players: [] },
+            { title: 'FIRST ROUND', name: 'vs Celtics', baseDefenders: 2, players: [{ name: 'Tatum', number: '0', p: '#008348', s: '#FFFFFF', img: 'https://placehold.co/80x80/008348/FFFFFF?text=[...]
+            { title: 'EC SEMIFINALS', name: 'vs Bucks', baseDefenders: 3, players: [{ name: 'Giannis', number: '34', p: '#00471B', s: '#EEE1C6', img: 'https://placehold.co/80x80/00471B/EEE1C6?te[...]
+            { title: 'EC FINALS', name: 'vs Pacers', baseDefenders: 4, players: [{ name: 'Haliburton', number: '0', p: '#FDBB30', s: '#002D62', img: 'https://placehold.co/80x80/FDBB30/002D62?tex[...]
+            { title: 'NBA FINALS', name: 'vs Thunder', baseDefenders: 5, players: [{ name: 'SGA', number: '2', p: '#007AC1', s: '#EF3B24', img: 'https://placehold.co/80x80/007AC1/EF3B24?text=2' [...]
+        ];
+        let shuffledRoster = [];
+        const jerseyImages = {};
+        const rivalJerseyImages = {};
+        // -- basketball --
+        const basketballImg = new Image();
+        basketballImg.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0Y0QTMwM[...]
+      
+        // --- Game State ---
+        let gameState = STATES.LINEUP;
+        let animationFrameId;
+        let snake = [], position = {}, velocity = {}, trophy = {}, defenders = [], tailLength, score, championshipLevel, trophiesCollectedInRound;
+        let gridSize, tileCount;
+        let lastFrameTime = 0;
+        let inputLocked = false;
+
+        // --- Free Throw State ---
+        let indicatorPosition = 0, indicatorDirection = 1, shotsMade = 0, isShooting = false;
+
+        // --- Touch State ---
+        let touchStartX = 0, touchStartY = 0;
+
+        // --- Initialization ---
+        window.onload = () => {
+            preloadAssets();
+            setupCanvas();
+            resetGame();
+            gameLoop(0); 
+        };
+        
+        // --- Main Game Loop ---
+        function gameLoop(currentTime) {
+            animationFrameId = requestAnimationFrame(gameLoop);
+            if (gameState === STATES.PLAYING) {
+                if (lastFrameTime === 0) lastFrameTime = currentTime;
+                const secondsSinceLastRender = (currentTime - lastFrameTime) / 1000;
+                if (secondsSinceLastRender < 1 / CONFIG.FRAME_RATE) return;
+                lastFrameTime = currentTime;
+                inputLocked = false; 
+                updateGame();
+                drawGame();
+            } else if (gameState === STATES.FREE_THROW) {
+                updateFreeThrowMeter();
+            }
+        }
+
+        // --- Game Logic ---
+        function updateGame() {
+            position.x += velocity.x;
+            position.y += velocity.y;
+
+            if (position.x < 0 || position.x >= tileCount || position.y < 0 || position.y >= tileCount) {
+                gameOver(); return;
+            }
+            for (const segment of snake) {
+                if (segment.x === position.x && segment.y === position.y && (velocity.x !== 0 || velocity.y !== 0)) {
+                    gameOver(); return;
+                }
+            }
+            snake.push({ x: position.x, y: position.y });
+            while (snake.length > tailLength) snake.shift();
+
+            checkCollisions();
+
+            let trophyEaten = (position.x === trophy.x && position.y === trophy.y);
+
+            if (trophyEaten) {
+                tailLength++;
+                score++;
+                trophiesCollectedInRound++;
+                updateScoreboard();
+                if (trophiesCollectedInRound >= 16) {
+                    if (championshipLevel === 4) {
+                        startFreeThrowMode();
+                    } else {
+                        advanceToNextRound();
+                    }
+                } else {
+                    placeTrophy();
+                }
+            }
+        }
+function drawCourt() {
+  const w = gameContainer.clientWidth; 
+  const h = w;
+  // wood gradient
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#e7c79e');
+  g.addColorStop(1, '#d3ab7f');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  // subtle plank lines
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#8d6e4a';
+  ctx.lineWidth = 1;
+  for (let y = 0; y < h; y += gridSize * 1.5) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(w, y + 0.5);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // court lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = Math.max(2, gridSize * 0.08);
+
+  // center circle
+  const r = gridSize * 4;
+  ctx.beginPath();
+  ctx.arc(w/2, h/2, r, 0, Math.PI*2);
+  ctx.stroke();
+
+  // midcourt line
+  ctx.beginPath();
+  ctx.moveTo(0, h/2);
+  ctx.lineTo(w, h/2);
+  ctx.stroke();
+
+  // keys (approximate proportions)
+  const keyW = gridSize * 10, keyH = gridSize * 6;
+  // bottom key
+  ctx.strokeRect((w - keyW)/2, h - keyH, keyW, keyH);
+  // top key
+  ctx.strokeRect((w - keyW)/2, 0, keyW, keyH);
+
+  // faint center logo “NYK”-style ghost
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = CONFIG.COLORS.KNICKS_ORANGE;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${gridSize*5}px 'Press Start 2P', cursive`;
+  ctx.fillText('NY', w/2, h/2);
+  ctx.restore();
+}
+function drawGame() {
+  drawCourt();
+
+  // snake with depth
+  snake.forEach((segment, i) => {
+    const x = segment.x * gridSize, y = segment.y * gridSize;
+    // shadow under tile
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = gridSize * 0.4;
+    ctx.shadowOffsetY = gridSize * 0.1;
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    roundRect(x+1, y+1, gridSize-2, gridSize-2, gridSize*0.15, true, false);
+    ctx.restore();
+
+    const player = shuffledRoster[i % shuffledRoster.length];
+    const jerseyImg = jerseyImages[player.number];
+    if (jerseyImg?.complete) {
+      // slight “wiggle” for life
+      ctx.save();
+      ctx.translate(x + gridSize/2, y + gridSize/2);
+      ctx.rotate(Math.sin((performance.now()/250) + i)*0.03);
+      ctx.translate(-gridSize/2, -gridSize/2);
+      ctx.drawImage(jerseyImg, 0, 0, gridSize, gridSize);
+      ctx.restore();
+    }
+  });
+
+  drawDefenders();
+
+  // pulsing trophy
+  ctx.save();
+  const tx = trophy.x * gridSize + gridSize/2;
+  const ty = trophy.y * gridSize + gridSize/2;
+  const scale = 0.9 + 0.1*Math.sin(performance.now()/200);
+  ctx.translate(tx, ty);
+  ctx.scale(scale, scale);
+  ctx.font = `${gridSize}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = gridSize * 0.4;
+  if (basketballImg.complete) {
+    ctx.drawImage(basketballImg, -gridSize/2, -gridSize/2, gridSize, gridSize);
+  }
+  ctx.restore();
+}
+      
+// helper
+function roundRect(x, y, w, h, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
+
+        // --- Defender Logic ---
+        function spawnDefenders() {
+            defenders = [];
+            const rival = rivals[championshipLevel - 1];
+            if (!rival) return;
+            const resetPos = { x: Math.floor(tileCount / 2), y: Math.floor(tileCount / 2) };
+            
+            const totalDefenders = rival.baseDefenders;
+
+            for (let i = 0; i < totalDefenders; i++) {
+                let defenderPos = {};
+                let validPosition = false;
+                while(!validPosition) {
+                    defenderPos = {
+                        x: Math.floor(Math.random() * tileCount),
+                        y: Math.floor(Math.random() * tileCount),
+                        jersey: rival.players[i]
+                    };
+                    const onSnake = snake.some(s => s.x === defenderPos.x && s.y === defenderPos.y);
+                    const onTrophy = defenderPos.x === trophy.x && defenderPos.y === trophy.y;
+                    const onResetPos = snake.length === 0 && defenderPos.x === resetPos.x && defenderPos.y === resetPos.y;
+                    const onAnotherDefender = defenders.some(d => d.x === defenderPos.x && d.y === defenderPos.y);
+                    if(!onSnake && !onTrophy && !onResetPos && !onAnotherDefender) validPosition = true;
+                }
+                defenders.push(defenderPos);
+            }
+        }
+
+        function checkCollisions() {
+            for (const def of defenders) {
+                if (def.x === position.x && def.y === position.y) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+
+function drawDefenders() {
+  const rival = rivals[championshipLevel - 1];
+  if (!rival || !rival.players.length) return;
+
+  defenders.forEach((def, idx) => {
+    const img = rivalJerseyImages[rival.name][def.jersey.number];
+    if (img?.complete) {
+      const x = def.x * gridSize, y = def.y * gridSize;
+      const bob = Math.sin((performance.now()/320) + idx) * 1.2;
+
+      // halo
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,255,255,0.6)';
+      ctx.shadowBlur = gridSize * 0.5;
+      ctx.drawImage(img, x, y + bob, gridSize, gridSize);
+      ctx.restore();
+
+      // outline for contrast
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      roundRect(x+1, y+1+bob, gridSize-2, gridSize-2, gridSize*0.15, true, false);
+      ctx.restore();
+    }
+  });
+}
+
+        // --- Free Throw Logic ---
+        function startFreeThrowMode() {
+            gameState = STATES.FREE_THROW;
+            // Reset meter state so it always starts consistently
+            indicatorPosition = 0;
+            indicatorDirection = 1;
+            meterIndicator.style.top = '0px';
+
+            shotsMade = 0;
+            isShooting = false;
+            shotsMadeEl.textContent = shotsMade;
+            const shooter = knicksRoster[(championshipLevel - 1) % knicksRoster.length];
+            playerNameEl.textContent = shooter.name;
+            playerImageEl.src = shooter.img;
+            freeThrowModal.classList.remove('hidden');
+            freeThrowModal.classList.add('flex');
+        }
+
+        function updateFreeThrowMeter() {
+            // simple bounce movement; keep within visual bounds
+            indicatorPosition += indicatorDirection * CONFIG.FT_METER.SPEED;
+            const maxTop = CONFIG.FT_METER.HEIGHT - CONFIG.FT_METER.INDICATOR_HEIGHT;
+            if (indicatorPosition < 0) {
+                indicatorPosition = 0;
+                indicatorDirection = 1;
+            } else if (indicatorPosition > maxTop) {
+                indicatorPosition = maxTop;
+                indicatorDirection = -1;
+            }
+            meterIndicator.style.top = `${indicatorPosition}px`;
+        }
+
+        function handleFreeThrowAttempt() {
+            if (isShooting) return;
+            isShooting = true;
+
+            // Use actual element bounds for robust hit detection
+            const indicatorRect = meterIndicator.getBoundingClientRect();
+            const zoneRect = makeZone.getBoundingClientRect();
+            const fullyInside = indicatorRect.top >= zoneRect.top && indicatorRect.bottom <= zoneRect.bottom;
+
+            if (fullyInside) {
+                shotsMade++;
+                shotsMadeEl.textContent = shotsMade;
+                if (shotsMade >= 2) {
+                    setTimeout(advanceToNextRound, 500);
+                } else {
+                    setTimeout(() => { isShooting = false; }, 500);
+                }
+            } else {
+                setTimeout(gameOver, 500);
+            }
+        }
+        
+        // --- Game State Management ---
+        function advanceToNextRound() {
+            if (championshipLevel >= rivals.length) {
+                gameOver(true);
+                return;
+            }
+            championshipLevel++;
+            showLineupScreen(startGameRound);
+        }
+
+        function startGameRound() {
+            trophiesCollectedInRound = 0;
+            updateScoreboard();
+            freeThrowModal.classList.add('hidden');
+            snake = [];
+            position = { x: Math.floor(tileCount / 2), y: Math.floor(tileCount / 2) };
+            velocity = { x: 1, y: 0 }; 
+            tailLength = 3;
+            placeTrophy();
+            spawnDefenders();
+            gameState = STATES.PLAYING;
+            lastFrameTime = 0;
+        }
+        
+        function showLineupScreen(callback) {
+            gameState = STATES.LINEUP;
+            const rival = rivals[championshipLevel - 1];
+            if (!rival) {
+                callback();
+                return;
+            }
+
+            lineupTitleEl.textContent = rival.title;
+            marqueeTextEl.textContent = rival.name;
+            
+            awayTeamEl.innerHTML = '';
+            if(rival.players.length > 0) {
+                rival.players.forEach((player, index) => {
+                    const playerCard = document.createElement('div');
+                    playerCard.className = 'player-card p-1';
+                    playerCard.style.animationDelay = `${index * 0.15 + 0.5}s`; 
+                    playerCard.style.transform = 'translateY(20px)';
+                    playerCard.innerHTML = 
+                        `<img src="${player.img}" class="w-20 h-20 rounded-full mb-2" alt="${player.name}">
+                        <p class="text-sm text-white">${player.name}</p>`
+                    ;
+                    awayTeamEl.appendChild(playerCard);
+                });
+            } else {
+                 awayTeamEl.innerHTML = `<p class="text-3xl text-center text-white animate-pulse">GET 16 LOOSE BALLS!</p>`;
+            }
+            
+            // Reset animations
+            marqueeEl.style.animation = 'none';
+            marqueeEl.offsetHeight; // Trigger reflow
+            marqueeEl.style.animation = 'marquee-scroll 4s ease-in-out';
+
+            // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
+            lineupModal.classList.remove('hidden');
+            lineupModal.classList.add('flex');
+
+            setTimeout(() => {
+                // Restore background scrolling
+                document.body.style.overflow = '';
+                lineupModal.classList.add('hidden');
+                lineupModal.classList.remove('flex');
+                callback();
+            }, 4000);
+        }
+
+        function gameOver(isWin = false) {
+            gameState = STATES.GAME_OVER;
+            if (isWin) {
+                gameOverModal.querySelector('h2').textContent = "CHAMPION!";
+                gameOverModal.querySelector('h2').classList.remove('text-red-500');
+                gameOverModal.querySelector('h2').classList.add('text-green-500');
+            } else {
+                 gameOverModal.querySelector('h2').textContent = "GAME OVER";
+                 gameOverModal.querySelector('h2').classList.add('text-red-500');
+                 gameOverModal.querySelector('h2').classList.remove('text-green-500');
+            }
+            finalScoreEl.textContent = score;
+            gameOverModal.classList.remove('hidden');
+            gameOverModal.classList.add('flex');
+            freeThrowModal.classList.add('hidden');
+        }
+        
+        function resetGame() {
+            shuffleRoster();
+            score = 0;
+            championshipLevel = 1;
+            trophiesCollectedInRound = 0; 
+            updateScoreboard(); 
+            gameOverModal.classList.add('hidden');
+            freeThrowModal.classList.add('hidden');
+            showLineupScreen(startGameRound);
+        }
+        
+        function placeTrophy() {
+            let validPosition = false;
+            while (!validPosition) {
+                trophy.x = Math.floor(Math.random() * tileCount);
+                trophy.y = Math.floor(Math.random() * tileCount);
+                const onSnake = snake.some(seg => seg.x === trophy.x && seg.y === trophy.y);
+                const onDefender = defenders.some(def => def.x === trophy.x && def.y === trophy.y);
+                if (!onSnake && !onDefender) validPosition = true;
+            }
+        }
+
+        function updateScoreboard() {
+            scoreEl.textContent = score;
+            championshipLevelEl.textContent = championshipLevel;
+            trophiesCollectedEl.textContent = `${trophiesCollectedInRound}/16`;
+            const rival = rivals[championshipLevel - 1];
+            rivalDisplayEl.textContent = rival ? rival.name : '';
+        }
+        
+// --- Setup & Assets ---
+function setupCanvas() {
+  const cssSize = Math.floor(gameContainer.clientWidth); // force integer
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  canvas.style.width  = cssSize + 'px';
+  canvas.style.height = cssSize + 'px';
+  canvas.width  = Math.round(cssSize * dpr);
+  canvas.height = Math.round(cssSize * dpr);
+
+  if (ctx.resetTransform) ctx.resetTransform(); else ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+
+  tileCount = Math.floor(cssSize / CONFIG.GRID_SIZE_HINT);
+  gridSize  = cssSize / tileCount;
+}
+
+        function createJerseySVG(playerNumber) {
+            return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${CONFIG.COLORS.KNICKS_BLUE}"/><polyg[...]
+        }
+
+        function createRivalJerseySVG(jersey) {
+            return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${jersey.p}"/><text x="50" y="75" fon[...]
+        }
+
+        function preloadAssets() {
+            knicksRoster.forEach(player => {
+                const img = new Image();
+                img.src = 'data:image/svg+xml;base64,' + window.btoa(createJerseySVG(player.number));
+                jerseyImages[player.number] = img;
+            });
+
+            rivals.forEach(rival => {
+                if (rival && rival.players.length) {
+                    rivalJerseyImages[rival.name] = {};
+                    rival.players.forEach(player => {
+                        const img = new Image();
+                        img.src = 'data:image/svg+xml;base64,' + window.btoa(createRivalJerseySVG(player));
+                        rivalJerseyImages[rival.name][player.number] = img;
+                    });
+                }
+            });
+        }
+        
+        function shuffleRoster() {
+            shuffledRoster = [...knicksRoster].sort(() => Math.random() - 0.5);
+        }
+
+        // --- Input Handling ---
+        function handleKeyDown(e) {
+            if (inputLocked) return;
+            if (gameState === STATES.PLAYING) {
+                switch (e.key) {
+                    case 'ArrowUp': if (velocity.y === 0) { velocity = { x: 0, y: -1 }; inputLocked = true; } break;
+                    case 'ArrowDown': if (velocity.y === 0) { velocity = { x: 0, y: 1 }; inputLocked = true; } break;
+                    case 'ArrowLeft': if (velocity.x === 0) { velocity = { x: -1, y: 0 }; inputLocked = true; } break;
+                    case 'ArrowRight': if (velocity.x === 0) { velocity = { x: 1, y: 0 }; inputLocked = true; } break;
+                }
+            }
+            if (gameState === STATES.FREE_THROW) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault(); // prevent page scroll on space/enter
+                    handleFreeThrowAttempt();
+                }
+            }
+        }
+
+        function handleTouchStart(e) {
+            if (gameState === STATES.PLAYING) {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            } else if (gameState === STATES.FREE_THROW) {
+                // e.preventDefault(); // not strictly necessary; keep default behavior safe
+                handleFreeThrowAttempt();
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if (gameState !== STATES.PLAYING || inputLocked) return;
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (Math.abs(deltaX) < 30) return;
+                if (deltaX > 0 && velocity.x === 0) { velocity = { x: 1, y: 0 }; inputLocked = true; }
+                else if (deltaX < 0 && velocity.x === 0) { velocity = { x: -1, y: 0 }; inputLocked = true; }
+            } else {
+                if (Math.abs(deltaY) < 30) return;
+                if (deltaY > 0 && velocity.y === 0) { velocity = { x: 0, y: 1 }; inputLocked = true; }
+                else if (deltaY < 0 && velocity.y === 0) { velocity = { x: 0, y: -1 }; inputLocked = true; }
+            }
+        }
+
+        // Also allow mouse/pointer clicks to shoot during free throws
+        function freeThrowPointerHandler(e) {
+            if (gameState === STATES.FREE_THROW) {
+                e.preventDefault();
+                handleFreeThrowAttempt();
+            }
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('resize', setupCanvas);
+        document.addEventListener('keydown', handleKeyDown);
+        gameContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+        gameContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+        // New: clicks/pointer on the modal to shoot
+        freeThrowModal.addEventListener('click', freeThrowPointerHandler);
+        freeThrowModal.addEventListener('pointerdown', freeThrowPointerHandler);
+
+        restartButton.addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
