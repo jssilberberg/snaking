@@ -14,12 +14,20 @@
             font-weight: 700;
             touch-action: none;
         }
-        #game-container {
-            border: 10px solid #006BB6;
-        }
-        canvas {
-            background-color: #dcb18c;
-        }
+#game-container {
+  position: relative;
+  /* replace border with inner shadow so it doesn’t eat space */
+  box-shadow: inset 0 0 0 10px #006BB6;
+  border-radius: 0.75rem; /* optional, for rounded edges */
+}
+      
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-color: #dcb18c;
+}
         .knicks-blue { background-color: #006BB6; }
         .knicks-orange { background-color: #F58426; }
         .knicks-silver { background-color: #BEC0C2; }
@@ -97,7 +105,7 @@
 
     </style>
 </head>
-<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4 overflow-hidden">
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-[100svh] p-4 overflow-hidden">
 
     <div class="w-full max-w-lg mx-auto text-center">
         <h1 class="text-3xl md:text-4xl font-bold text-knicks-orange mb-2" style="font-family: 'Press Start 2P', cursive;">SNAKING & SHAKING</h1>
@@ -293,7 +301,8 @@
             }
         }
 function drawCourt() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
   // wood gradient
   const g = ctx.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, '#e7c79e');
@@ -620,18 +629,25 @@ function drawDefenders() {
         
 // --- Setup & Assets ---
 function setupCanvas() {
-  const size = gameContainer.clientWidth;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2); // cap for perf
-  canvas.style.width = `${size}px`;
-  canvas.style.height = `${size}px`;
-  canvas.width = Math.floor(size * dpr);
-  canvas.height = Math.floor(size * dpr);
-  const ctxReset = ctx.resetTransform ? ctx.resetTransform.bind(ctx) : () => ctx.setTransform(1,0,0,1,0,0);
-  ctxReset();
+  const rect = gameContainer.getBoundingClientRect();
+  const cssSize = Math.min(rect.width, rect.height); // square
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // CSS size (what you see)
+  canvas.style.width  = cssSize + 'px';
+  canvas.style.height = cssSize + 'px';
+
+  // Backing store (what we draw to)
+  canvas.width  = Math.round(cssSize * dpr);
+  canvas.height = Math.round(cssSize * dpr);
+
+  // Reset and scale the context so you can keep drawing in CSS pixels
+  if (ctx.resetTransform) ctx.resetTransform();
+  else ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
-  tileCount = Math.floor(size / CONFIG.GRID_SIZE_HINT);
-  gridSize = size / tileCount;
+  tileCount = Math.floor(cssSize / CONFIG.GRID_SIZE_HINT);
+  gridSize  = cssSize / tileCount;
 }
 
         function createJerseySVG(playerNumber) {
