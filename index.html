@@ -111,7 +111,7 @@ canvas {
         <div class="flex justify-around items-center mb-4 p-2 knicks-blue rounded-lg text-xs sm:text-base">
             <div>ROUND: <span id="championshipLevel" class="text-knicks-orange">1</span></div>
             <div>SCORE: <span id="score" class="text-knicks-orange">0</span></div>
-            <div>TROPHIES: <span id="trophiesCollected" class="text-knicks-orange">0/16</span></div>
+            <div>LOOSE BALLS: <span id="trophiesCollected" class="text-knicks-orange">0/16</span></div>
         </div>
         <div id="rival-display" class="text-knicks-silver h-6"></div>
     </div>
@@ -396,7 +396,7 @@ function drawGame() {
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,0.4)';
   ctx.shadowBlur = gridSize * 0.4;
-  ctx.fillText('🏆', 0, 0);
+  ctx.fillText('🏀', 0, 0);
   ctx.restore();
 }
 
@@ -561,7 +561,7 @@ function drawDefenders() {
                     awayTeamEl.appendChild(playerCard);
                 });
             } else {
-                 awayTeamEl.innerHTML = `<p class="text-3xl text-center text-white animate-pulse">GET 16 TROPHIES!</p>`;
+                 awayTeamEl.innerHTML = `<p class="text-3xl text-center text-white animate-pulse">GET 16 LOOSE BALLS!</p>`;
             }
             
             // Reset animations
