@@ -292,23 +292,118 @@
                 }
             }
         }
+function drawCourt() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  // wood gradient
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#e7c79e');
+  g.addColorStop(1, '#d3ab7f');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
 
-        function drawGame() {
-            ctx.fillStyle = CONFIG.COLORS.COURT;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            snake.forEach((segment, index) => {
-                const player = shuffledRoster[index % shuffledRoster.length];
-                const jerseyImg = jerseyImages[player.number];
-                if (jerseyImg?.complete) {
-                    ctx.drawImage(jerseyImg, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
-                }
-            });
-            drawDefenders();
-            ctx.font = `${gridSize}px serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🏆', trophy.x * gridSize + gridSize / 2, trophy.y * gridSize + gridSize / 2);
-        }
+  // subtle plank lines
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#8d6e4a';
+  ctx.lineWidth = 1;
+  for (let y = 0; y < h; y += gridSize * 1.5) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(w, y + 0.5);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // court lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = Math.max(2, gridSize * 0.08);
+
+  // center circle
+  const r = gridSize * 4;
+  ctx.beginPath();
+  ctx.arc(w/2, h/2, r, 0, Math.PI*2);
+  ctx.stroke();
+
+  // midcourt line
+  ctx.beginPath();
+  ctx.moveTo(0, h/2);
+  ctx.lineTo(w, h/2);
+  ctx.stroke();
+
+  // keys (approximate proportions)
+  const keyW = gridSize * 10, keyH = gridSize * 6;
+  // bottom key
+  ctx.strokeRect((w - keyW)/2, h - keyH, keyW, keyH);
+  // top key
+  ctx.strokeRect((w - keyW)/2, 0, keyW, keyH);
+
+  // faint center logo “NYK”-style ghost
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = CONFIG.COLORS.KNICKS_ORANGE;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${gridSize*5}px 'Press Start 2P', cursive`;
+  ctx.fillText('NY', w/2, h/2);
+  ctx.restore();
+}
+function drawGame() {
+  drawCourt();
+
+  // snake with depth
+  snake.forEach((segment, i) => {
+    const x = segment.x * gridSize, y = segment.y * gridSize;
+    // shadow under tile
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = gridSize * 0.4;
+    ctx.shadowOffsetY = gridSize * 0.1;
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    roundRect(x+1, y+1, gridSize-2, gridSize-2, gridSize*0.15, true, false);
+    ctx.restore();
+
+    const player = shuffledRoster[i % shuffledRoster.length];
+    const jerseyImg = jerseyImages[player.number];
+    if (jerseyImg?.complete) {
+      // slight “wiggle” for life
+      ctx.save();
+      ctx.translate(x + gridSize/2, y + gridSize/2);
+      ctx.rotate(Math.sin((performance.now()/250) + i)*0.03);
+      ctx.translate(-gridSize/2, -gridSize/2);
+      ctx.drawImage(jerseyImg, 0, 0, gridSize, gridSize);
+      ctx.restore();
+    }
+  });
+
+  drawDefenders();
+
+  // pulsing trophy
+  ctx.save();
+  const tx = trophy.x * gridSize + gridSize/2;
+  const ty = trophy.y * gridSize + gridSize/2;
+  const scale = 0.9 + 0.1*Math.sin(performance.now()/200);
+  ctx.translate(tx, ty);
+  ctx.scale(scale, scale);
+  ctx.font = `${gridSize}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = gridSize * 0.4;
+  ctx.fillText('🏆', 0, 0);
+  ctx.restore();
+}
+
+// helper
+function roundRect(x, y, w, h, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
 
         // --- Defender Logic ---
         function spawnDefenders() {
@@ -347,17 +442,32 @@
             }
         }
 
-        function drawDefenders() {
-            const rival = rivals[championshipLevel - 1];
-            if (!rival || !rival.players.length) return;
+function drawDefenders() {
+  const rival = rivals[championshipLevel - 1];
+  if (!rival || !rival.players.length) return;
 
-            defenders.forEach(def => {
-                const rivalImg = rivalJerseyImages[rival.name][def.jersey.number];
-                if (rivalImg?.complete) {
-                    ctx.drawImage(rivalImg, def.x * gridSize, def.y * gridSize, gridSize, gridSize);
-                }
-            });
-        }
+  defenders.forEach((def, idx) => {
+    const img = rivalJerseyImages[rival.name][def.jersey.number];
+    if (img?.complete) {
+      const x = def.x * gridSize, y = def.y * gridSize;
+      const bob = Math.sin((performance.now()/320) + idx) * 1.2;
+
+      // halo
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,255,255,0.6)';
+      ctx.shadowBlur = gridSize * 0.5;
+      ctx.drawImage(img, x, y + bob, gridSize, gridSize);
+      ctx.restore();
+
+      // outline for contrast
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      roundRect(x+1, y+1+bob, gridSize-2, gridSize-2, gridSize*0.15, true, false);
+      ctx.restore();
+    }
+  });
+}
 
         // --- Free Throw Logic ---
         function startFreeThrowMode() {
@@ -508,14 +618,21 @@
             rivalDisplayEl.textContent = rival ? rival.name : '';
         }
         
-        // --- Setup & Assets ---
-        function setupCanvas() {
-            const containerSize = gameContainer.clientWidth;
-            canvas.width = containerSize;
-            canvas.height = containerSize;
-            tileCount = Math.floor(containerSize / CONFIG.GRID_SIZE_HINT);
-            gridSize = containerSize / tileCount; 
-        }
+// --- Setup & Assets ---
+function setupCanvas() {
+  const size = gameContainer.clientWidth;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2); // cap for perf
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+  canvas.width = Math.floor(size * dpr);
+  canvas.height = Math.floor(size * dpr);
+  const ctxReset = ctx.resetTransform ? ctx.resetTransform.bind(ctx) : () => ctx.setTransform(1,0,0,1,0,0);
+  ctxReset();
+  ctx.scale(dpr, dpr);
+
+  tileCount = Math.floor(size / CONFIG.GRID_SIZE_HINT);
+  gridSize = size / tileCount;
+}
 
         function createJerseySVG(playerNumber) {
             return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${CONFIG.COLORS.KNICKS_BLUE}"/><polygon points="30,0 70,0 100,25 100,35 70,10 30,10 0,35 0,25" fill="${CONFIG.COLORS.KNICKS_ORANGE}"/><text x="50" y="75" font-size="50" fill="#FFFFFF" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold">${playerNumber}</text></svg>`;
