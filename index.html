@@ -19,8 +19,8 @@
   box-shadow: inset 0 0 0 10px #006BB6;
   border-radius: 0; /* optional, for rounded edges */
 }
-#game-container::before { content: ""; display: block; padding-top: 100%; }
-#gameCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background-color: #dcb18c; }
+#game-container::before { content:""; display:block; padding-top:100%; }
+#gameCanvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
 canvas {
   width: 100%;
   height: 100%;
@@ -628,20 +628,15 @@ function drawDefenders() {
         
 // --- Setup & Assets ---
 function setupCanvas() {
-  const cssSize = gameContainer.clientWidth; // height equals width by ::before
+  const cssSize = Math.floor(gameContainer.clientWidth); // force integer
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-  // CSS size (what you see)
   canvas.style.width  = cssSize + 'px';
   canvas.style.height = cssSize + 'px';
-
-  // Backing store (what we draw to)
   canvas.width  = Math.round(cssSize * dpr);
   canvas.height = Math.round(cssSize * dpr);
 
-  // Reset and scale the context so you can keep drawing in CSS pixels
-  if (ctx.resetTransform) ctx.resetTransform();
-  else ctx.setTransform(1,0,0,1,0,0);
+  if (ctx.resetTransform) ctx.resetTransform(); else ctx.setTransform(1,0,0,1,0,0);
   ctx.scale(dpr, dpr);
 
   tileCount = Math.floor(cssSize / CONFIG.GRID_SIZE_HINT);
