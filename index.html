@@ -55,6 +55,7 @@ canvas {
             background-color: #F58426;
             position: absolute;
             left: 0;
+            will-change: top;
         }
         #makeZone {
             width: 100%;
@@ -152,7 +153,7 @@ canvas {
             </button>
         </div>
 
-        <div id="freeThrowModal" class="absolute inset-0 bg-black bg-opacity-80 flex-col items-center justify-center rounded-lg hidden z-10">
+        <div id="freeThrowModal" class="absolute inset-0 bg-black bg-opacity-80 flex-col items-center justify-center rounded-lg hidden z-20">
             <h2 class="text-2xl text-knicks-orange mb-4">CLUTCH FREE THROWS</h2>
             <p class="text-sm text-center mb-2 text-knicks-silver">Make both to advance to the Finals!</p>
             <img id="playerImage" src="" class="w-24 h-24 rounded-full border-4 border-knicks-orange mb-4" alt="Player">
@@ -194,6 +195,7 @@ canvas {
         const restartButton = document.getElementById('restartButton');
         const freeThrowModal = document.getElementById('freeThrowModal');
         const meterIndicator = document.getElementById('meterIndicator');
+        const freeThrowMeterEl = document.getElementById('freeThrowMeter');
         const makeZone = document.getElementById('makeZone');
         const shotsMadeEl = document.getElementById('shotsMade');
         const playerImageEl = document.getElementById('playerImage');
@@ -512,6 +514,9 @@ function drawDefenders() {
             gameState = STATES.FREE_THROW;
             shotsMade = 0;
             isShooting = false;
+            indicatorPosition = 0;
+            indicatorDirection = 1;
+            meterIndicator.style.top = '0px';
             shotsMadeEl.textContent = shotsMade;
             const shooter = knicksRoster[(championshipLevel - 1) % knicksRoster.length];
             playerNameEl.textContent = shooter.name;
@@ -521,18 +526,20 @@ function drawDefenders() {
         }
 
         function updateFreeThrowMeter() {
+            const maxPos = CONFIG.FT_METER.HEIGHT - CONFIG.FT_METER.INDICATOR_HEIGHT;
             indicatorPosition += indicatorDirection * CONFIG.FT_METER.SPEED;
-            if (indicatorPosition > CONFIG.FT_METER.HEIGHT - CONFIG.FT_METER.INDICATOR_HEIGHT || indicatorPosition < 0) indicatorDirection *= -1;
+            if (indicatorPosition < 0) { indicatorPosition = 0; indicatorDirection = 1; }
+            else if (indicatorPosition > maxPos) { indicatorPosition = maxPos; indicatorDirection = -1; }
             meterIndicator.style.top = `${indicatorPosition}px`;
         }
 
         function handleFreeThrowAttempt() {
             if (isShooting) return;
             isShooting = true;
-            const meterTop = meterIndicator.offsetTop;
-            const zoneTop = CONFIG.FT_METER.ZONE_TOP;
-            const zoneHeight = CONFIG.FT_METER.ZONE_HEIGHT;
-            if (meterTop >= zoneTop && meterTop <= zoneTop + zoneHeight) {
+            const indRect = meterIndicator.getBoundingClientRect();
+            const zoneRect = makeZone.getBoundingClientRect();
+            const isMake = indRect.top >= zoneRect.top && indRect.bottom <= zoneRect.bottom;
+            if (isMake) {
                 shotsMade++;
                 shotsMadeEl.textContent = shotsMade;
                 if (shotsMade >= 2) setTimeout(advanceToNextRound, 500);
@@ -720,6 +727,7 @@ function setupCanvas() {
                 }
             }
             if (gameState === STATES.FREE_THROW && e.key === ' ') {
+                e.preventDefault();
                 handleFreeThrowAttempt();
             }
         }
@@ -752,6 +760,12 @@ function setupCanvas() {
             }
         }
 
+        function freeThrowPointerHandler(e) {
+            if (gameState === STATES.FREE_THROW) {
+                e.preventDefault();
+                handleFreeThrowAttempt();
+            }
+        }
         // --- Event Listeners ---
         window.addEventListener('resize', setupCanvas);
         document.addEventListener('keydown', handleKeyDown);
@@ -759,5 +773,7 @@ function setupCanvas() {
         gameContainer.addEventListener('touchend', handleTouchEnd, false);
         restartButton.addEventListener('click', resetGame);
     </script>
+        freeThrowModal.addEventListener('click', freeThrowPointerHandler);
+        freeThrowModal.addEventListener('pointerdown', freeThrowPointerHandler);
 </body>
 </html>
